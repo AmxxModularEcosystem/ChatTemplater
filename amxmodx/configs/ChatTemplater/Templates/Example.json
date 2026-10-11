@@ -1,0 +1,12 @@
+[
+    {
+        "Key": "default_say",
+        "Template": "^3{p:name}^1: ^4{chat:text}",
+        "Description": "Публичный чат"
+    },
+    {
+        "Key": "default_sayteam",
+        "Template": "^3({p:team-name}) {p:name}^1: ^4{chat:text}",
+        "Description": "Командный чат"
+    }
+]

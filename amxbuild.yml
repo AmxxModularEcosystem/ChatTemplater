@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/AmxxModularEcosystem/amxx-builder/master/schema/amxbuild.schema.json
+
+name: ChatTemplater
+version: "1.0.0"
+
+deps:
+  - AmxxModularEcosystem/ParamsController@1.5.0
+
+# Agent-facing skills (exposed via MCP/serve; never shipped in the build/archive).
+skills:
+  - dir: skills/selector-swap
+    name: chat-templater-selector-swap
+    description: >-
+      Как заменить встроенный селектор шаблонов ChatTemplater на свой (например
+      по VipModular-лимитам): форвард CT_OnRequestTemplate,
+      CT_SetRequestedTemplate + PLUGIN_HANDLED, откат CT_GetBuiltinTemplate.
+  - dir: skills/template-config
+    name: chat-templater-template-config
+    description: >-
+      Настройка шаблонов чата и встроенного селектора ChatTemplater:
+      templates/*.json, selector.json, плейсхолдеры {group:key}, цвета
+      ^1/^3/^4, {chat:text}.
