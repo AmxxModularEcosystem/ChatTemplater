@@ -132,6 +132,10 @@ public CT_OnRequestTemplate(const playerIndex, const E_CTChannel:channel)
 Не-VIP (флаг `t` отсутствует) не проходит `Access`, модуль не выдаётся,
 `VipM_Modules_GetParams` вернёт пусто, и селектор вернёт `PLUGIN_CONTINUE`.
 
+Нужен шаблон под состояние (мёртв/наблюдатель)? Состояние селектор определяет
+сам: `is_user_alive(playerIndex)`, `get_user_team(playerIndex)` — форвард
+передаёт только канал.
+
 ## На что смотреть при переносе
 
 - Проверить реальные сигнатуры в `VipModular.inc` и `ParamsController.inc`.

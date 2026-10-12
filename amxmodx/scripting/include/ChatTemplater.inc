@@ -63,6 +63,11 @@ native bool:CT_GetTemplateString(const T_Template:template, out[], const len);
  * Called for every chat message before it is rendered. A plugin may override
  * the template used for this message by calling CT_SetRequestedTemplate().
  *
+ * @note  Only the chat channel is passed, because the channel is a property of
+ *        the command (say vs say_team), not of the player. Anything else about
+ *        the sender — alive/dead/spectator, team — is the selector's own
+ *        business: resolve it from playerIndex if you need it.
+ *
  * @param playerIndex  Player whose message is being rendered.
  * @param channel      Chat channel (Say or SayTeam).
  *
@@ -84,6 +89,12 @@ native CT_SetRequestedTemplate(const key[]);
 
 /**
  * Returns the template the built-in selector would use for a player/channel.
+ *
+ * @note  The built-in selector resolves the sender's state (alive/dead/
+ *        spectator) and team side from playerIndex itself, so this is the
+ *        built-in answer for the player's current state. With no message
+ *        context (e.g. a direct call) it still works, using the player's state
+ *        as it is right now.
  *
  * @param playerIndex  Player index.
  * @param channel      Chat channel.

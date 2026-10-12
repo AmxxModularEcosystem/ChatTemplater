@@ -5,8 +5,28 @@
         "Description": "Публичный чат"
     },
     {
+        "Key": "default_say_dead",
+        "Template": "^1*МЁРТВ* ^3{p:name}^1: ^4{chat:text}",
+        "Description": "Публичный чат от мёртвого игрока"
+    },
+    {
+        "Key": "default_say_spec",
+        "Template": "^1*SPEC* ^3{p:name}^1: ^4{chat:text}",
+        "Description": "Публичный чат от наблюдателя"
+    },
+    {
         "Key": "default_sayteam",
         "Template": "^3({p:team-name}) {p:name}^1: ^4{chat:text}",
         "Description": "Командный чат"
+    },
+    {
+        "Key": "default_sayteam_dead",
+        "Template": "^1*МЁРТВ* ^3({p:team-name}) {p:name}^1: ^4{chat:text}",
+        "Description": "Командный чат от мёртвого игрока"
+    },
+    {
+        "Key": "default_sayteam_spec",
+        "Template": "^1*SPEC* {p:name}^1: ^4{chat:text}",
+        "Description": "Командный чат от наблюдателя"
     }
 ]

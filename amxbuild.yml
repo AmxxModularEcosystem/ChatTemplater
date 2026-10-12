@@ -3,6 +3,9 @@
 name: ChatTemplater
 version: "1.0.0"
 
+amxmodx:
+  version: "1.10.5486"
+
 deps:
   - AmxxModularEcosystem/ParamsController@1.5.0
 

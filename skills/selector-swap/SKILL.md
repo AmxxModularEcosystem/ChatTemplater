@@ -6,7 +6,8 @@ description: >-
   CT_OnRequestTemplate, захват решения через CT_SetRequestedTemplate +
   PLUGIN_HANDLED, отказ в пользу встроенного через PLUGIN_CONTINUE, откат
   CT_GetBuiltinTemplate, поиск CT_FindTemplate, каналы E_CTChannel
-  (CTChannel_Say / CTChannel_SayTeam) и T_Template. Использовать для подмены
+  (CTChannel_Say / CTChannel_SayTeam; состояние игрока селектор определяет сам)
+  и T_Template. Использовать для подмены
   селектора шаблонов чата и выдачи игрокам разных шаблонов.
   Триггеры: подмена селектора, замена селектора, селектор шаблонов, selector,
   chat template selector, custom selector, CT_OnRequestTemplate,
@@ -48,24 +49,39 @@ description: >-
 
 ## Как устроен встроенный селектор
 
-ChatTemplater несёт встроенный селектор: это **глобальная** пара ключей шаблонов
-из `addons/amxmodx/configs/ChatTemplater/Selector.json`:
+ChatTemplater несёт встроенный селектор: это набор ключей шаблонов из
+`addons/amxmodx/configs/ChatTemplater/Selector.json`. Базовые ключи — `Say` и
+`SayTeam`; остальные уточняют состояние отправителя и необязательны:
 
 ```json
 {
     "Say": "<key>",
-    "SayTeam": "<key>"
+    "SayDead": "<key>",
+    "SaySpec": "<key>",
+    "SayTeam": "<key>",
+    "SayTeamT": "<key>",
+    "SayTeamCT": "<key>",
+    "SayTeamDead": "<key>",
+    "SayTeamTDead": "<key>",
+    "SayTeamCTDead": "<key>",
+    "SayTeamSpec": "<key>"
 }
 ```
 
-Пара применяется ко всем игрокам без разбора.
+Незаданный ключ откатывается на более общий, затем на базовый ключ канала
+(`Say` / `SayTeam`), а `say_team` при отсутствии всей цепочки `SayTeam*` — на
+`say` того же состояния. Набор применяется ко всем игрокам.
 
-Все 8 токенов CS SayText сводятся ядром к двум логическим каналам:
+Ядро сводит все 8 токенов CS SayText к двум логическим каналам:
 
 | Канал | Какие токены покрывает |
 |---|---|
 | `CTChannel_Say` | All, AllDead, AllSpec |
 | `CTChannel_SayTeam` | T, T_Dead, CT, CT_Dead, Spec |
+
+Различие жив/мёртв/спектатор и сторона T/CT — это не канал, а состояние. Ядро
+его в форвард **не передаёт**: селектор определяет его сам по `playerIndex`
+(`is_user_alive`, `get_user_team`) — так же, как встроенный.
 
 ## Как подменить (процесс)
 
@@ -93,7 +109,7 @@ ChatTemplater несёт встроенный селектор: это **гло�
 |---|---|---|
 | `CT_OnRequestTemplate` | `forward CT_OnRequestTemplate(const playerIndex, const E_CTChannel:channel)` | Ядро спрашивает плагин, какой шаблон использовать |
 | `CT_SetRequestedTemplate` | натив | Задать ключ выбранного шаблона |
-| `CT_GetBuiltinTemplate` | натив, возвращает `T_Template` | Получить встроенный (Selector.json) результат |
+| `CT_GetBuiltinTemplate` | натив, возвращает `T_Template` | Получить встроенный (Selector.json) результат для текущего состояния игрока |
 | `CT_FindTemplate` | натив, возвращает `T_Template` | Найти шаблон по ключу |
 | `E_CTChannel` | enum | `CTChannel_Say`, `CTChannel_SayTeam` |
 | `T_Template` | tag | `Invalid_Template` для отсутствующего шаблона |
@@ -114,6 +130,20 @@ public CT_OnRequestTemplate(const playerIndex, const E_CTChannel:channel)
         return PLUGIN_CONTINUE;
 
     CT_SetRequestedTemplate(SAY_TEMPLATE_KEY);
+    return PLUGIN_HANDLED;
+}
+```
+
+Если решение зависит от состояния игрока (жив/мёртв/наблюдатель, сторона
+T/CT), определите его сами по `playerIndex` — форвард передаёт только канал:
+
+```pawn
+public CT_OnRequestTemplate(const playerIndex, const E_CTChannel:channel)
+{
+    if (channel != CTChannel_Say)
+        return PLUGIN_CONTINUE;
+
+    CT_SetRequestedTemplate(is_user_alive(playerIndex) ? "vip_say" : "vip_say_dead");
     return PLUGIN_HANDLED;
 }
 ```

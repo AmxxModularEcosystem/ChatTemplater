@@ -1,4 +1,8 @@
 {
     "Say": "default_say",
-    "SayTeam": "default_sayteam"
+    "SayDead": "default_say_dead",
+    "SaySpec": "default_say_spec",
+    "SayTeam": "default_sayteam",
+    "SayTeamDead": "default_sayteam_dead",
+    "SayTeamSpec": "default_sayteam_spec"
 }

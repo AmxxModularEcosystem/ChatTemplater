@@ -3,7 +3,7 @@ name: chat-templater-template-config
 description: >-
   Как настраивать шаблоны чата ChatTemplater и его встроенный селектор: файлы
   addons/amxmodx/configs/ChatTemplater/Templates/*.json (массив объектов
-  {Key, Template, Description}), Selector.json ({Say, SayTeam}), синтаксис
+  {Key, Template, Description}), Selector.json (Say / SayTeam + уточнения), синтаксис
   шаблона (плейсхолдеры {group:key}, цвета ^1/^3/^4, специальный {chat:text}),
   встроенные группы плейсхолдеров (global и player), поведение при ошибках и
   типовые проблемы. Использовать, когда нужно создать или поправить файл
@@ -27,8 +27,10 @@ description: >-
 
 1. **Шаблоны.** Каждый файл в `Templates/` это JSON-массив объектов с ключом
    `Key` и строкой `Template`.
-2. **Встроенный селектор.** `Selector.json` задаёт одну глобальную пару ключей
-   (`Say`, `SayTeam`) для всех игроков.
+2. **Встроенный селектор.** `Selector.json` задаёт ключи шаблонов: базовые
+   `Say` / `SayTeam` и необязательные уточнения по состоянию (`SayDead`,
+   `SaySpec`, `SayTeamT` / `SayTeamCT`, `SayTeamDead`, ...) с откатом, в
+   пределе — `say_team` на `say`.
 
 Строка шаблона собирается из плейсхолдеров ParamsController `{group:key}` и
 цветовых кодов чата `^1` / `^3` / `^4`. Плейсхолдер `{chat:text}` подставляет
@@ -44,7 +46,7 @@ addons/amxmodx/configs/ChatTemplater/
 ├── Templates/
 │   ├── <file>.json        # массив объектов шаблонов
 │   └── ...
-└── Selector.json          # глобальный селектор (Say / SayTeam)
+└── Selector.json          # селектор (Say / SayTeam + уточнения)
 ```
 
 ## Файлы шаблонов
@@ -75,15 +77,43 @@ addons/amxmodx/configs/ChatTemplater/
 
 ## Встроенный селектор (Selector.json)
 
+Объект «ключ селектора → `Key` шаблона». Базовые ключи — по одному на канал,
+остальные уточняют состояние и **необязательны**:
+
 ```json
 {
     "Say": "say_default",
-    "SayTeam": "sayteam_default"
+    "SayDead": "say_dead",
+    "SaySpec": "say_spec",
+    "SayTeam": "sayteam_default",
+    "SayTeamT": "sayteam_t",
+    "SayTeamCT": "sayteam_ct",
+    "SayTeamDead": "sayteam_dead",
+    "SayTeamTDead": "sayteam_t_dead",
+    "SayTeamCTDead": "sayteam_ct_dead",
+    "SayTeamSpec": "sayteam_spec"
 }
 ```
 
-- Две пары: `Say` для общего чата, `SayTeam` для командного.
-- Значения это `Key` шаблонов.
+| Ключ | Когда применяется | Откат, если не задан |
+|---|---|---|
+| `Say` | `say`, жив | — (последний рубеж) |
+| `SayDead` | `say`, мёртв | `Say` |
+| `SaySpec` | `say`, наблюдатель | `Say` |
+| `SayTeam` | `say_team`, жив | `Say` |
+| `SayTeamT` | `say_team`, жив, Terrorist | `SayTeam` → `Say` |
+| `SayTeamCT` | `say_team`, жив, Counter-Terrorist | `SayTeam` → `Say` |
+| `SayTeamDead` | `say_team`, мёртв (любая сторона) | `SayTeam` → `SayDead` → `Say` |
+| `SayTeamTDead` | `say_team`, мёртв, Terrorist | `SayTeamDead` → `SayTeam` → `SayDead` → `Say` |
+| `SayTeamCTDead` | `say_team`, мёртв, Counter-Terrorist | `SayTeamDead` → `SayTeam` → `SayDead` → `Say` |
+| `SayTeamSpec` | `say_team`, наблюдатель | `SayTeam` → `SaySpec` → `Say` |
+
+- Значения — это `Key` шаблонов.
+- Каждый ключ необязателен, кроме `Say`: незаданный откатывается на более
+  общий, затем на базовый ключ канала, а `say_team` — дальше на цепочку `say`
+  того же состояния (`SayDead` / `SaySpec` / `Say`).
+- Канал (`say` / `say_team`) определяет ядро; состояние (жив / мёртв /
+  наблюдатель) и сторону (T / CT) селектор определяет сам по игроку.
 - Действует **глобально** для всех игроков.
 
 ## Синтаксис шаблона
@@ -150,10 +180,26 @@ addons/amxmodx/configs/ChatTemplater/
 }
 ```
 
-Вывод состояния игрока. Встроенный селектор различает только каналы
-`Say`/`SayTeam`, поэтому выбрать шаблон по признаку «жив/мёртв» одним шаблоном
-нельзя — для этого нужен свой селектор (скилл `chat-templater-selector-swap`).
-Как есть — можно вывести само состояние через `{p:alive}` (0/1):
+Отдельный шаблон по состоянию. Встроенный селектор умеет выбирать шаблон под
+живость/спектаторство и сторону через ключи `SayDead`, `SaySpec`, `SayTeamT`,
+`SayTeamDead`, ... (см. раздел про `Selector.json`):
+
+```json
+{
+    "Key": "say_dead",
+    "Template": "^1*МЁРТВ* {p:name}^1: {chat:text}"
+}
+```
+
+```json
+{
+    "Say": "say_default",
+    "SayDead": "say_dead"
+}
+```
+
+Вывести состояние можно и одним шаблоном, без переключения, через `{p:alive}`
+(0/1):
 
 ```json
 {
@@ -176,10 +222,11 @@ addons/amxmodx/configs/ChatTemplater/
 ## Поведение при ошибках
 
 - Пропущен `Key` или `Template` в объекте: элемент шаблона невалиден.
-- В `Selector.json` указан неизвестный ключ: сообщение отправляется без
-  изменений.
-- Ключ шаблона не найден (`Invalid_Template`): сообщение отправляется без
-  изменений.
+- Уточняющий ключ состояния не задан (или его шаблон не найден): селектор
+  откатывается на более общий ключ (`SayTeamTDead` → `SayTeamDead` →
+  `SayTeam`), в пределе — на базовый `Say` / `SayTeam`.
+- Базовый ключ канала отсутствует или его шаблон не найден
+  (`Invalid_Template`): сообщение отправляется без изменений.
 
 ## Диагностика
 

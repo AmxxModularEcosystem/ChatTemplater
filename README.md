@@ -16,7 +16,10 @@
 - Плейсхолдеры ParamsController (`{p:name}`, `{map}`, ...) + текст игрока `{chat:text}`.
 - Цвета чата `^1` / `^3` / `^4`.
 - Шаблоны в нескольких JSON-файлах (папка `Templates/`).
-- Встроенный селектор: глобальная пара ключей `Say` / `SayTeam`.
+- Встроенный селектор: базовые ключи `Say` / `SayTeam` плюс уточнения по
+  состоянию отправителя (`SayDead`, `SaySpec`, `SayTeamT` / `SayTeamCT`,
+  `SayTeamDead`, ...); `say_team` откатывается на `say`, если командные шаблоны
+  не заданы.
 - Подменяемый селектор (свой API для расширенных реализаций).
 
 ## Требования
@@ -68,14 +71,46 @@ addons/amxmodx/configs/ChatTemplater/
 
 ### Встроенный селектор — `Selector.json`
 
+Объект «ключ селектора → `Key` шаблона». Базовые ключи — по одному на канал;
+остальные уточняют состояние отправителя и **необязательны**:
+
 ```json
 {
     "Say": "default_say",
-    "SayTeam": "default_sayteam"
+    "SayDead": "default_say_dead",
+    "SaySpec": "default_say_spec",
+    "SayTeam": "default_sayteam",
+    "SayTeamT": "default_sayteam_t",
+    "SayTeamCT": "default_sayteam_ct",
+    "SayTeamDead": "default_sayteam_dead",
+    "SayTeamTDead": "default_sayteam_t_dead",
+    "SayTeamCTDead": "default_sayteam_ct_dead",
+    "SayTeamSpec": "default_sayteam_spec"
 }
 ```
 
-Глобальная (для всех игроков) пара ключей: для общего и командного чата.
+| Ключ | Когда применяется | Откат, если ключ не задан |
+|---|---|---|
+| `Say` | `say`, отправитель жив | — (последний рубеж) |
+| `SayDead` | `say`, мёртв | `Say` |
+| `SaySpec` | `say`, наблюдатель | `Say` |
+| `SayTeam` | `say_team`, жив | `Say` |
+| `SayTeamT` | `say_team`, жив, Terrorist | `SayTeam` → `Say` |
+| `SayTeamCT` | `say_team`, жив, Counter-Terrorist | `SayTeam` → `Say` |
+| `SayTeamDead` | `say_team`, мёртв (любая сторона) | `SayTeam` → `SayDead` → `Say` |
+| `SayTeamTDead` | `say_team`, мёртв, Terrorist | `SayTeamDead` → `SayTeam` → `SayDead` → `Say` |
+| `SayTeamCTDead` | `say_team`, мёртв, Counter-Terrorist | `SayTeamDead` → `SayTeam` → `SayDead` → `Say` |
+| `SayTeamSpec` | `say_team`, наблюдатель | `SayTeam` → `SaySpec` → `Say` |
+
+Незаданный уточняющий ключ откатывается на более общий, затем на базовый ключ
+канала, а для `say_team` — дальше на цепочку `say` **того же состояния**
+(`SayDead` / `SaySpec` / `Say`). То есть серверу достаточно задать только
+шаблоны `say`, чтобы стилизовать и общий, и командный чат. Файл с одной парой
+`Say` / `SayTeam` работает ровно как раньше.
+
+Канал (`say` или `say_team`) — свойство команды, его определяет ядро.
+Состояние (жив / мёртв / наблюдатель) и сторону (T / CT) встроенный селектор
+определяет сам по отправителю (`is_user_alive`, `get_user_team`).
 
 ### Плейсхолдеры
 
@@ -126,6 +161,9 @@ public CT_OnRequestTemplate(const playerIndex, const E_CTChannel:channel)
 - `CT_SetRequestedTemplate(key)` + `return PLUGIN_HANDLED` — использовать свой шаблон.
 - `return PLUGIN_CONTINUE` — отдать встроенному селектору.
 - `CT_GetBuiltinTemplate(playerIndex, channel)` — явный откат к встроенному результату.
+- Форвард передаёт только канал (`say` / `say_team`). Живость, спектаторство и
+  сторону селектор достаёт из `playerIndex` сам (`is_user_alive`,
+  `get_user_team`) — если это нужно конкретно ему.
 
 Полный пример (селектор по VipModular-лимитам) — в скилле
 `skills/selector-swap/references/example-vipmodular.md`.
